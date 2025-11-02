@@ -1,6 +1,7 @@
 import { defineConfig } from '@rspack/cli';
 import { rspack } from '@rspack/core';
 import RefreshPlugin from '@rspack/plugin-react-refresh';
+import path from 'path';
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -9,16 +10,19 @@ export default defineConfig({
     main: './src/index.tsx',
   },
   output: {
-    path: './dist',
+    path: path.resolve(__dirname, 'dist'),
     filename: '[name].[contenthash].js',
     clean: true,
     publicPath: 'auto',
     uniqueName: 'host',
   },
+  experiments: {
+    css: true,
+  },
   resolve: {
     extensions: ['.tsx', '.ts', '.jsx', '.js', '.json'],
     alias: {
-      '@': './src',
+      '@': path.resolve(__dirname, 'src'),
     },
   },
   module: {
@@ -47,19 +51,6 @@ export default defineConfig({
       },
       {
         test: /\.css$/,
-        use: [
-          {
-            loader: 'postcss-loader',
-            options: {
-              postcssOptions: {
-                plugins: {
-                  tailwindcss: {},
-                  autoprefixer: {},
-                },
-              },
-            },
-          },
-        ],
         type: 'css',
       },
       {

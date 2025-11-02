@@ -65,6 +65,29 @@ pnpm type-check
 - `pnpm preview` - Preview production build locally
 - `pnpm type-check` - Run TypeScript type checking
 
+## 🐛 Troubleshooting
+
+If you encounter issues during setup or development, check out the [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) guide which covers:
+
+- **Path Resolution Errors** - Issues with `./dist` path configuration
+- **CSS Parser Errors** - "No parser registered for 'css'" error
+- **Rspack Configuration** - Enabling experimental CSS support
+
+Common quick fixes:
+```bash
+# If port 3000 is already in use
+lsof -ti:3000 | xargs kill -9
+
+# Clear node_modules and reinstall
+rm -rf node_modules pnpm-lock.yaml
+pnpm install
+
+# Clear rspack cache
+rm -rf dist node_modules/.cache
+```
+
+For detailed solutions and explanations, see [TROUBLESHOOTING.md](./TROUBLESHOOTING.md).
+
 ## 🎨 Adding shadcn/ui Components
 
 This project is pre-configured for shadcn/ui. To add components:
