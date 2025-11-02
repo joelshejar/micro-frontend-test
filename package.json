@@ -1,24 +1,37 @@
 {
-  "name": "micro-frontend-test",
-  "version": "0.0.0",
+  "name": "micro-frontend-host",
+  "version": "1.0.0",
   "private": true,
-  "description": "Micro-frontend monorepo with pnpm, TypeScript, and Turborepo",
-  "packageManager": "pnpm@9.15.9",
-  "engines": {
-    "node": ">=20.0.0",
-    "pnpm": ">=9.0.0"
-  },
+  "description": "Host application for micro-frontend architecture using Rspack and Module Federation",
+  "author": "Joel Rajesh K",
+  "license": "MIT",
   "scripts": {
-    "build": "turbo run build",
-    "dev": "turbo run dev",
-    "lint": "turbo run lint",
-    "test": "turbo run test",
-    "clean": "turbo run clean && rm -rf node_modules",
-    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""
+    "dev": "rspack serve --mode development",
+    "build": "rspack build --mode production",
+    "preview": "serve dist -p 3000",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.5.5",
+    "lucide-react": "^0.454.0"
   },
   "devDependencies": {
-    "turbo": "^2.3.3",
+    "@rspack/core": "^1.1.8",
+    "@rspack/cli": "^1.1.8",
+    "@rspack/plugin-react-refresh": "^1.0.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
     "typescript": "^5.6.3",
-    "prettier": "^3.3.3"
+    "react-refresh": "^0.14.2",
+    "serve": "^14.2.4",
+    "tailwindcss": "^3.4.15",
+    "tailwindcss-animate": "^1.0.7",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "postcss-loader": "^8.1.1"
   }
 }

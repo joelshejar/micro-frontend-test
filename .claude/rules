@@ -1,0 +1,178 @@
+# Claude Code Rules - Automatic Documentation System
+
+## 📋 Session End Protocol
+
+At the end of EVERY work session where code changes were made, Claude MUST:
+
+1. **Update CHANGELOG.md**
+   - Add a new dated entry (YYYY-MM-DD format)
+   - Document all changes made during the session
+   - Include: what was built, files modified, key decisions, challenges solved, what's working
+   - Be specific and technical (not generic)
+
+2. **Generate LinkedIn Post**
+   - Add new dated post to LINKEDIN.md
+   - Base content ONLY on actual changes from CHANGELOG
+   - Follow the structure in LINKEDIN.md guidelines
+   - Include: tech decisions, challenges & solutions, what's working, next steps
+   - Add 2-3 community engagement questions
+   - Use 8-12 relevant hashtags
+
+3. **Generate Twitter Thread**
+   - Add new dated thread to TWITTER.md
+   - Base content ONLY on actual changes from CHANGELOG
+   - Follow the structure in TWITTER.md guidelines (8-12 tweets)
+   - Include: tech choices, code snippets, real challenges, what's working
+   - End with question/CTA for engagement
+   - Use 2-3 hashtags per thread
+
+4. **Update README.md**
+   - Update "Development Timeline" section
+   - Mark completed phase items with [x]
+   - Add new phase if starting major milestone
+   - Keep "Next Steps" section current
+
+## 🚫 Rules to Enforce
+
+### DO:
+- ✅ Generate posts based on ACTUAL work done (from CHANGELOG)
+- ✅ Include SPECIFIC technical details
+- ✅ Mention REAL challenges faced and solutions
+- ✅ Use code snippets from actual implementation
+- ✅ Be authentic and honest about learnings
+- ✅ Update documentation at END of session (not beginning)
+- ✅ Use current date for new entries
+
+### DON'T:
+- ❌ Pre-write posts for future work
+- ❌ Generate generic/template content
+- ❌ Create posts without corresponding CHANGELOG entry
+- ❌ Use placeholder text or "coming soon"
+- ❌ Skip documentation updates
+- ❌ Backdate or future-date entries
+
+## 📝 CHANGELOG Entry Requirements
+
+Each entry MUST include:
+
+```markdown
+## YYYY-MM-DD (Month Day, Year)
+
+### Phase/Feature Name
+
+**What was built:**
+- Specific feature/component 1
+- Specific feature/component 2
+- Configuration details
+
+**Files created/modified:**
+- path/to/file.ts - What it does
+- path/to/config.json - Purpose
+
+**Key decisions:**
+- Decision 1 with technical rationale
+- Decision 2 with technical rationale
+
+**Challenges solved:**
+- Challenge description
+  Solution: Specific solution implemented
+
+**What's working:**
+- Feature 1 - Current status
+- Feature 2 - Current status
+
+**What's next:**
+- Immediate next task
+- Upcoming feature
+```
+
+## 🎯 When to Generate Posts
+
+Generate new posts ONLY when:
+- ✅ Significant feature/component completed
+- ✅ Major configuration/setup finished
+- ✅ Important architectural decision made
+- ✅ Multiple related tasks completed on same day
+
+Skip post generation for:
+- ❌ Minor bug fixes
+- ❌ Trivial config changes
+- ❌ Documentation-only updates
+- ❌ Small refactorings
+
+## 📅 Date-Based Organization
+
+- Posts are organized by DATE, not by sequential numbers
+- Use format: YYYY-MM-DD - Descriptive Title
+- Most recent date at the top
+- Maintain chronological order (newest first)
+
+## 🔄 Workflow Summary
+
+When user says "I'm done" or session ends:
+1. Review all changes made
+2. Update CHANGELOG.md with dated entry
+3. Generate LinkedIn post from CHANGELOG
+4. Generate Twitter thread from CHANGELOG
+5. Update README.md timeline
+6. Confirm all documentation is updated
+
+## 💡 Example Session End
+
+```
+User: "Okay, I'm done for today"
+
+Claude:
+1. Updates CHANGELOG.md with today's changes
+2. Generates LinkedIn post based on actual work
+3. Generates Twitter thread based on actual work
+4. Updates README.md timeline
+5. Responds: "Documentation updated! Here's what was documented:
+   - CHANGELOG.md: Added entry for 2025-11-03
+   - LINKEDIN.md: Generated post for today's work
+   - TWITTER.md: Generated 9-tweet thread
+   - README.md: Updated Phase 3 progress
+
+   Your posts are ready to share!"
+```
+
+## 🎨 Content Quality Standards
+
+### LinkedIn Posts Must:
+- Be professional but personal
+- Include 1-2 code snippets max
+- Mention specific challenges and solutions
+- Ask 2-3 questions for engagement
+- Use technical terms correctly
+- Be 300-500 words
+
+### Twitter Threads Must:
+- Be conversational and casual
+- Keep tweets under 280 characters
+- Use 8-12 tweets total
+- Include minimal code (2-3 lines max)
+- Have clear thread numbers (1/9, 2/9, etc.)
+- End with engaging question/CTA
+
+## 🔍 Verification Checklist
+
+Before completing session, verify:
+- [ ] CHANGELOG.md has entry for today with all changes
+- [ ] LinkedIn post exists for today (if significant work done)
+- [ ] Twitter thread exists for today (if significant work done)
+- [ ] README.md timeline is current
+- [ ] All content is based on actual work (no placeholders)
+- [ ] Dates are correct (today's date)
+- [ ] Technical details are accurate
+- [ ] Code snippets match actual implementation
+
+## 📌 Remember
+
+This system ensures:
+- Authentic content based on real progress
+- Accurate technical documentation
+- Consistent social media presence
+- Learning journey is well documented
+- Community engagement is meaningful
+
+ALWAYS follow this protocol. No exceptions.
