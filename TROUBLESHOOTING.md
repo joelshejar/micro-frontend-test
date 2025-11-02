@@ -268,6 +268,91 @@ Rspack compiled successfully in 101 ms
 
 ---
 
+## Issue 3: TypeScript Type Errors in IDE
+
+### Problem Description
+IDE (VSCode, WebStorm, etc.) shows TypeScript errors like:
+
+```
+Property 'div' does not exist on type 'JSX.IntrinsicElements'
+Cannot find module 'react' or its corresponding type declarations
+```
+
+However, `pnpm type-check` runs successfully without errors.
+
+### Root Cause
+This is typically an IDE configuration issue where:
+1. The IDE is not using the workspace TypeScript version
+2. React types are not being loaded by the IDE
+3. The tsconfig doesn't explicitly specify which types to load
+
+### Solution
+
+**1. Update `tsconfig.json` to explicitly reference React types:**
+
+```typescript
+{
+  "compilerOptions": {
+    // ... other options
+
+    /* Type definitions */
+    "types": ["@types/react", "@types/react-dom"]
+  },
+  "include": ["src/**/*", "src/types/**/*.d.ts"]
+}
+```
+
+**File**: `tsconfig.json:30, 32`
+
+**2. Create `.vscode/settings.json` to configure IDE:**
+
+```json
+{
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true
+}
+```
+
+**File**: `.vscode/settings.json`
+
+**3. Remove unused React imports (React 18 with jsx: "react-jsx"):**
+
+Before:
+```typescript
+import React, { Suspense, lazy } from 'react';  // ❌ React not used
+```
+
+After:
+```typescript
+import { Suspense, lazy } from 'react';  // ✅ Only import what's needed
+```
+
+**File**: `src/App.tsx:1`
+
+**Note**: You still need `import React from 'react'` in files that use `React.StrictMode` or other React APIs directly.
+
+**4. Restart your IDE:**
+- VSCode: Press `Cmd+Shift+P` (Mac) or `Ctrl+Shift+P` (Windows/Linux)
+- Type "Developer: Reload Window"
+- Press Enter
+
+**5. Verify the fix:**
+```bash
+# Run type checking
+pnpm type-check
+
+# Expected output:
+# ✓ No errors
+```
+
+### Why This Works
+- Explicitly listing types in `tsconfig.json` ensures the TypeScript compiler loads React type definitions
+- VSCode settings ensure the IDE uses the workspace TypeScript version
+- More explicit `include` paths ensure all TypeScript files are processed
+- Removing unused imports eliminates linter warnings
+
+---
+
 ## Key Takeaways
 
 1. **Always use absolute paths** for build tool configurations like `output.path`
@@ -275,6 +360,8 @@ Rspack compiled successfully in 101 ms
 3. **Rspack CSS support** requires the `experiments.css: true` flag
 4. **External configuration files** (like `postcss.config.js`) are automatically detected when using the appropriate loaders
 5. **Simplify configurations** - sometimes less is more (simple `type: 'css'` works better than complex loader chains when the experimental flag is enabled)
+6. **Explicit type references** in tsconfig help IDEs recognize type definitions
+7. **React 18 with jsx: "react-jsx"** doesn't require importing React in every component file
 
 ---
 
@@ -283,3 +370,5 @@ Rspack compiled successfully in 101 ms
 - [Rspack CSS Documentation](https://rspack.dev/guide/features/builtin-swc-loader.html#css)
 - [Rspack Experiments](https://rspack.dev/config/experiments.html)
 - [Node.js Path Module](https://nodejs.org/api/path.html)
+- [TypeScript Module Resolution](https://www.typescriptlang.org/docs/handbook/module-resolution.html)
+- [React 18 JSX Transform](https://react.dev/blog/2020/09/22/introducing-the-new-jsx-transform)

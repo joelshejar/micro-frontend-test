@@ -1,8 +1,8 @@
-import React, { Suspense, lazy } from 'react';
+import { Suspense, lazy } from 'react';
 
-// Example of how to load remote components
-// Uncomment when you have remote apps configured
-// const RemoteApp = lazy(() => import('remote1/App'));
+// Load remote components from remote1
+const RemoteApp = lazy(() => import('remote1/App'));
+const RemoteButton = lazy(() => import('remote1/Button'));
 
 function App() {
   return (
@@ -35,13 +35,21 @@ function App() {
             </ol>
           </div>
 
-          {/* Example remote component section - uncomment when remotes are ready */}
-          {/* <div className="border rounded-lg p-4">
-            <h3 className="font-semibold mb-4">Remote Applications</h3>
-            <Suspense fallback={<div>Loading remote app...</div>}>
+          {/* Remote Button Component */}
+          <div className="border rounded-lg p-4 space-y-4">
+            <h3 className="font-semibold">Remote Button from Remote1</h3>
+            <Suspense fallback={<div className="text-sm text-muted-foreground">Loading remote button...</div>}>
+              <RemoteButton />
+            </Suspense>
+          </div>
+
+          {/* Remote App Component */}
+          <div className="border rounded-lg p-4">
+            <h3 className="font-semibold mb-4">Remote Application (Remote1)</h3>
+            <Suspense fallback={<div className="text-sm text-muted-foreground">Loading remote app...</div>}>
               <RemoteApp />
             </Suspense>
-          </div> */}
+          </div>
         </div>
       </main>
     </div>

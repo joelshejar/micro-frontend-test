@@ -67,8 +67,7 @@ export default defineConfig({
     new rspack.container.ModuleFederationPlugin({
       name: 'host',
       remotes: {
-        // Remote apps will be added here
-        // Example: 'remote1': 'remote1@http://localhost:3001/remoteEntry.js',
+        remote1: 'remote1@http://localhost:3001/remoteEntry.js',
       },
       shared: {
         react: {

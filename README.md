@@ -138,50 +138,61 @@ All posts are based on **real work completed**, not templates or predictions.
 
 ## 🔌 Module Federation Configuration
 
-### Adding Remote Applications
+This project is configured to load remote micro-frontend applications using Module Federation.
 
-1. **Update rspack.config.ts** to add remote entries:
+### Current Setup
 
-```typescript
-remotes: {
-  remote1: 'remote1@http://localhost:3001/remoteEntry.js',
-  remote2: 'remote2@http://localhost:3002/remoteEntry.js',
-},
+**Host Application**: Running on port 3000
+**Remote Applications**:
+- `remote1` - Running on port 3001 (exposes `App` and `Button` components)
+
+### Quick Start
+
+Start both applications in separate terminals:
+
+```bash
+# Terminal 1: Start remote app
+cd /Users/joelrajeshk/Desktop/micro-frontend-test-remote
+pnpm dev
+
+# Terminal 2: Start host app
+cd /Users/joelrajeshk/Desktop/micro-frontend-test
+pnpm dev
 ```
 
-2. **Import remote components** in your React code:
+Visit http://localhost:3000 to see the host app with integrated remote components.
+
+### Integration Example
+
+The host app loads remote components using lazy loading:
 
 ```typescript
 import { lazy, Suspense } from 'react';
 
+// Load remote components
 const RemoteApp = lazy(() => import('remote1/App'));
-const RemoteButton = lazy(() => import('remote2/Button'));
+const RemoteButton = lazy(() => import('remote1/Button'));
 
 function App() {
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <RemoteApp />
       <RemoteButton />
+      <RemoteApp />
     </Suspense>
   );
 }
 ```
 
-3. **Add type definitions** in `src/types/remotes.d.ts`:
+### Complete Guide
 
-```typescript
-declare module 'remote1/*' {
-  const Component: React.ComponentType<any>;
-  export default Component;
-}
-```
+For detailed instructions on integrating remote applications, troubleshooting, and best practices, see:
 
-### Creating a Remote Application
-
-See the remote application template repositories for setup instructions. Remote apps need:
-- Module Federation plugin configured to expose components
-- Same React version (18.3.1) marked as singleton
-- Unique port and application name
+**[MODULE_FEDERATION_GUIDE.md](./MODULE_FEDERATION_GUIDE.md)** - Complete guide covering:
+- Step-by-step integration instructions
+- Architecture overview
+- Troubleshooting common issues
+- Adding more remote apps
+- Best practices and tips
 
 ## 📚 Development Timeline
 
