@@ -5,6 +5,8 @@ This document outlines the issues encountered during the initial setup of the mi
 ## Table of Contents
 - [Issue 1: Path Resolution Error](#issue-1-path-resolution-error)
 - [Issue 2: CSS Parser Registration Error](#issue-2-css-parser-registration-error)
+- [Issue 3: TypeScript Type Errors in IDE](#issue-3-typescript-type-errors-in-ide)
+- [Issue 4: Remote App Styles Not Loading in Host](#issue-4-remote-app-styles-not-loading-in-host)
 - [Final Working Configuration](#final-working-configuration)
 
 ---
@@ -353,6 +355,94 @@ pnpm type-check
 
 ---
 
+## Issue 4: Remote App Styles Not Loading in Host
+
+### Problem Description
+When loading a remote micro-frontend via Module Federation:
+- Styles (Tailwind CSS, custom CSS) work correctly when accessing the remote app directly at `http://localhost:3001`
+- However, none of the styles are applied when the remote components are loaded in the host app at `http://localhost:3000`
+- The components render correctly but appear unstyled
+
+### Root Cause
+CSS files are only imported in the remote app's entry point (`src/index.tsx`), but Module Federation exposes individual components (`./App`, `./Button`), not the entire entry point.
+
+**What happens:**
+```typescript
+// remote1/src/index.tsx
+import './index.css';  // ✅ Loaded when running standalone
+import App from './App';
+
+// remote1/src/App.tsx
+// ❌ No CSS import here
+function App() { ... }
+```
+
+When Module Federation exposes `./App`, it bundles only that component and its direct imports. The CSS import in `index.tsx` is **not included** in the federated module.
+
+**In the remote's rspack.config.ts:**
+```typescript
+exposes: {
+  './App': './src/App.tsx',      // Only bundles App.tsx and its imports
+  './Button': './src/components/Button.tsx',  // Only bundles Button.tsx
+}
+```
+
+### Solution
+Import the CSS file directly in the exposed component so it's bundled with the federated module:
+
+```typescript
+// remote1/src/App.tsx
+import Button from './components/Button';
+import './index.css';  // ✅ Add this line
+
+function App() {
+  // ... component code
+}
+```
+
+**File**: `remote1/src/App.tsx:2`
+
+### Why This Works
+- Each exposed component in Module Federation is treated as a separate entry point
+- Dependencies are resolved from the exposed file, not from the application's main entry
+- By importing CSS in the exposed component, it becomes part of that component's dependency graph
+- When the host loads `remote1/App`, the CSS is now included in the bundle
+
+### Alternative Approaches
+
+#### Option 1: Create a CSS-only exposed module
+```typescript
+// remote1/rspack.config.ts
+exposes: {
+  './App': './src/App.tsx',
+  './styles': './src/index.css',  // Expose styles separately
+}
+```
+
+Then import in the host:
+```typescript
+// host/src/App.tsx
+import 'remote1/styles';  // Load styles once
+const RemoteApp = lazy(() => import('remote1/App'));
+```
+
+#### Option 2: Import CSS in both entry and exposed component
+Keep the import in `index.tsx` (for standalone) and add it to exposed components (for federation). This is safe as bundlers will deduplicate the CSS.
+
+### Verification Steps
+1. Add the CSS import to the exposed component(s)
+2. Restart the remote dev server (`pnpm dev` in remote app directory)
+3. Reload the host application at `http://localhost:3000`
+4. Verify that Tailwind classes and custom styles are now applied
+
+### Important Notes
+- This applies to **any** asset (CSS, fonts, images) that needs to be loaded with remote components
+- Each exposed component should import its required styles
+- Shared styles across multiple exposed components should be imported in a common parent or separately exposed
+- The same principle applies in production builds, not just development
+
+---
+
 ## Key Takeaways
 
 1. **Always use absolute paths** for build tool configurations like `output.path`
@@ -362,6 +452,7 @@ pnpm type-check
 5. **Simplify configurations** - sometimes less is more (simple `type: 'css'` works better than complex loader chains when the experimental flag is enabled)
 6. **Explicit type references** in tsconfig help IDEs recognize type definitions
 7. **React 18 with jsx: "react-jsx"** doesn't require importing React in every component file
+8. **Module Federation exposed components** must import their own styles - dependencies from the entry point are not automatically included
 
 ---
 
