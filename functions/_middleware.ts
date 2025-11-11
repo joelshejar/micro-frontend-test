@@ -34,8 +34,18 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     // Get the response from the origin
     const response = await next();
 
-    // Only process successful responses with text content
-    if (!response.ok || !response.headers.get('content-type')?.includes('text')) {
+    // Only process successful responses
+    if (!response.ok) {
+      return response;
+    }
+
+    // Check content type - must be text-based
+    const contentType = response.headers.get('content-type') || '';
+    const isTextContent = contentType.includes('text') ||
+                          contentType.includes('javascript') ||
+                          contentType.includes('html');
+
+    if (!isTextContent) {
       return response;
     }
 
@@ -74,11 +84,14 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       body = body.replace(/__REMOTE_URL_PLACEHOLDER__/g, cachedRemoteUrl || '');
       console.log(`[Host URL Injection] Replaced placeholder with: ${cachedRemoteUrl}`);
 
+      // Create a new headers object (immutable headers can cause issues)
+      const newHeaders = new Headers(response.headers);
+
       // Create a new response with the modified body
       return new Response(body, {
         status: response.status,
         statusText: response.statusText,
-        headers: response.headers,
+        headers: newHeaders,
       });
     }
 

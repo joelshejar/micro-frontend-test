@@ -373,6 +373,52 @@ Both apps need KV binding (configured via dashboard, not env vars):
    ```
    Should return empty (placeholder should be replaced).
 
+### Worker Error 1101
+
+**Symptom**: Site shows "Error 1101: Worker threw exception"
+
+**Root Cause**: Edge function has a runtime error, typically from:
+- Immutable headers being passed to `new Response()`
+- Content-type detection failing
+- Missing error handling in middleware
+
+**Solutions**:
+
+1. **Check edge function code** in `functions/_middleware.ts`:
+   - Ensure headers are cloned: `new Headers(response.headers)`
+   - Content-type check should be comprehensive
+   - All code paths return a valid Response
+
+2. **View Functions logs**:
+   - Dashboard → Project → Deployments → [Latest] → Functions tab
+   - Look for JavaScript errors or stack traces
+
+3. **Test locally with Wrangler**:
+   ```bash
+   pnpm build
+   wrangler pages dev dist --kv REMOTE_URLS
+   ```
+
+4. **Verify the fix**:
+   ```typescript
+   // ✅ Correct approach
+   const newHeaders = new Headers(response.headers);
+   return new Response(body, {
+     status: response.status,
+     statusText: response.statusText,
+     headers: newHeaders,  // Use cloned headers
+   });
+   ```
+
+5. **Redeploy after fixing**:
+   ```bash
+   git add functions/_middleware.ts
+   git commit -m "Fix edge function Worker error"
+   git push origin main
+   ```
+
+**Related**: See [TROUBLESHOOTING.md - Issue 5](./TROUBLESHOOTING.md#issue-5-worker-error-1101-on-cloudflare-pages-deployment) for detailed fix.
+
 ### KV Not Updating
 
 **Symptom**: Old remote version keeps loading

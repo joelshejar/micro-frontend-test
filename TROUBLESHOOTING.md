@@ -7,6 +7,7 @@ This document outlines the issues encountered during the initial setup of the mi
 - [Issue 2: CSS Parser Registration Error](#issue-2-css-parser-registration-error)
 - [Issue 3: TypeScript Type Errors in IDE](#issue-3-typescript-type-errors-in-ide)
 - [Issue 4: Remote App Styles Not Loading in Host](#issue-4-remote-app-styles-not-loading-in-host)
+- [Issue 5: Worker Error 1101 on Cloudflare Pages Deployment](#issue-5-worker-error-1101-on-cloudflare-pages-deployment)
 - [Final Working Configuration](#final-working-configuration)
 
 ---
@@ -443,6 +444,199 @@ Keep the import in `index.tsx` (for standalone) and add it to exposed components
 
 ---
 
+## Issue 5: Worker Error 1101 on Cloudflare Pages Deployment
+
+### Problem Description
+
+After deploying to Cloudflare Pages, visiting the site shows:
+
+```
+Error 1101
+Worker threw exception
+You've requested a page on a website (micro-frontend-test-7m9.pages.dev)
+that is on the Cloudflare network. An unknown error occurred while
+rendering the page.
+```
+
+Additionally, before the edge function code was added, the host app would render content briefly and then disappear.
+
+### Root Cause
+
+The issue is caused by the edge function (`functions/_middleware.ts`) having problems with:
+
+1. **Immutable Headers**: Cloudflare Response headers are immutable and can't be passed directly to `new Response()`
+2. **Content-Type Detection**: The original check for `text` content was too strict and didn't catch all JavaScript files
+3. **Missing Error Handling**: If the response processing fails, no fallback is provided
+
+### Solution
+
+Update the edge function with proper header handling and content-type detection:
+
+**File**: `functions/_middleware.ts:37-50`
+
+```typescript
+// ❌ BEFORE (causes Error 1101)
+const response = await next();
+
+if (!response.ok || !response.headers.get('content-type')?.includes('text')) {
+  return response;
+}
+
+// ... later ...
+return new Response(body, {
+  status: response.status,
+  statusText: response.statusText,
+  headers: response.headers,  // ❌ Immutable headers cause error
+});
+```
+
+```typescript
+// ✅ AFTER (fixed)
+const response = await next();
+
+// Only process successful responses
+if (!response.ok) {
+  return response;
+}
+
+// Check content type - must be text-based
+const contentType = response.headers.get('content-type') || '';
+const isTextContent = contentType.includes('text') ||
+                      contentType.includes('javascript') ||
+                      contentType.includes('html');
+
+if (!isTextContent) {
+  return response;
+}
+
+// ... later ...
+
+// Create a new headers object (immutable headers can cause issues)
+const newHeaders = new Headers(response.headers);
+
+return new Response(body, {
+  status: response.status,
+  statusText: response.statusText,
+  headers: newHeaders,  // ✅ Use new Headers object
+});
+```
+
+### Key Changes
+
+1. **Split Condition Checks**: Separated `!response.ok` check from content-type check for better error handling
+2. **Enhanced Content-Type Detection**: Now checks for `text`, `javascript`, and `html` explicitly
+3. **New Headers Object**: Create a new mutable `Headers` object from the immutable response headers
+4. **Better Fallbacks**: Each error path returns a valid response
+
+### Verification Steps
+
+After deploying the fix:
+
+1. **Check Deployment Logs**:
+   ```bash
+   # In Cloudflare Dashboard:
+   # Workers & Pages → micro-frontend-test → Deployments → [Latest] → Functions tab
+   ```
+
+2. **Test the Site**:
+   - Visit: https://micro-frontend-test-7m9.pages.dev
+   - Should load without Error 1101
+   - Check browser DevTools console for edge function logs
+
+3. **Verify URL Injection**:
+   - View page source
+   - Search for `__REMOTE_URL_PLACEHOLDER__`
+   - Should NOT find it (replaced by edge function)
+   - Search for `micro-frontend-test-remote.pages.dev`
+   - Should find it in the Module Federation config
+
+4. **Check Edge Function Logs** (if enabled):
+   ```bash
+   wrangler pages deployment tail --project-name=micro-frontend-test
+   ```
+
+### Related Issues
+
+#### Content Disappears After Initial Render
+
+**Symptom**: When visiting the host app, content briefly appears on screen and then disappears, leaving only an empty `<div id="root">`.
+
+**Why This Happens**:
+
+1. **React Mounts**: React successfully initializes and renders the host app
+2. **Module Federation Initializes**: The Module Federation runtime tries to load the remote
+3. **Invalid URL**: Reads `__REMOTE_URL_PLACEHOLDER__` as the remote entry URL (because edge function isn't running or has an error)
+4. **Silent Failure**: Module Federation attempts to fetch from this invalid URL and fails
+5. **React Unmounts**: The lazy-loaded remote components throw errors, causing React to unmount
+6. **Empty Page**: User sees only the empty root div
+
+**Root Cause**: The edge function either:
+- Has a runtime error (Error 1101) preventing it from running
+- Isn't deployed properly (missing `functions/_middleware.ts`)
+- Has a bug that prevents placeholder replacement
+
+**The Fix Flow**:
+
+```
+❌ BEFORE FIX:
+User visits → HTML loaded with placeholder → React mounts →
+Module Federation reads __REMOTE_URL_PLACEHOLDER__ → Invalid URL →
+Fetch fails → React error → Components unmount → Empty page
+
+✅ AFTER FIX:
+User visits → Edge function intercepts → Reads KV →
+Replaces placeholder with real URL → HTML served with valid URL →
+React mounts → Module Federation reads valid URL →
+Remote loads successfully → App works! ✅
+```
+
+**Key Point**: The edge function runs **before** the browser ever sees the HTML. By the time React initializes, the placeholder is already replaced with a valid URL, so Module Federation never sees the invalid placeholder.
+
+#### Empty `<div id="root">`
+
+**Symptom**: Page source shows `<div id="root"></div>` with no children.
+
+**Cause**: Same as above - React fails to mount due to Module Federation errors from invalid remote URL.
+
+#### CORS Errors
+
+**Symptom**: Remote URL is correctly injected but still fails to load with CORS errors.
+
+**Cause**: Remote app's `_headers` file is missing or not deployed.
+
+**Solution**: Check remote app's `_headers` file has proper CORS configuration:
+```
+/*
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, OPTIONS
+```
+
+### Prevention
+
+To avoid this issue in future:
+
+1. **Test Edge Functions Locally**: Use Wrangler's local dev mode
+   ```bash
+   wrangler pages dev dist --kv REMOTE_URLS
+   ```
+
+2. **Always Clone Headers**: When modifying responses, create new Headers objects
+   ```typescript
+   const newHeaders = new Headers(response.headers);
+   ```
+
+3. **Comprehensive Content-Type Checks**: Include all expected MIME types
+   ```typescript
+   const isTextContent = contentType.includes('text') ||
+                         contentType.includes('javascript') ||
+                         contentType.includes('html') ||
+                         contentType.includes('json');
+   ```
+
+4. **Monitor Function Logs**: Enable and check Cloudflare Workers logs for errors
+
+---
+
 ## Key Takeaways
 
 1. **Always use absolute paths** for build tool configurations like `output.path`
@@ -453,6 +647,8 @@ Keep the import in `index.tsx` (for standalone) and add it to exposed components
 6. **Explicit type references** in tsconfig help IDEs recognize type definitions
 7. **React 18 with jsx: "react-jsx"** doesn't require importing React in every component file
 8. **Module Federation exposed components** must import their own styles - dependencies from the entry point are not automatically included
+9. **Cloudflare Response headers are immutable** - always create new Headers objects when modifying responses in edge functions
+10. **Test edge functions locally** before deploying to catch Worker exceptions early
 
 ---
 
