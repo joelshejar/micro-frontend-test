@@ -194,6 +194,93 @@ For detailed instructions on integrating remote applications, troubleshooting, a
 - Adding more remote apps
 - Best practices and tips
 
+## 🌐 Deployment
+
+This application is deployed to **Cloudflare Pages** with automatic integration for remote micro-frontends using Workers and KV storage.
+
+### Production URLs
+
+- **Host App**: https://micro-frontend-test-7m9.pages.dev
+- **Remote App**: https://micro-frontend-test-remote.pages.dev
+
+### Automatic Remote Updates
+
+The deployment architecture enables **zero-downtime updates**:
+
+1. Push to remote app repository → Auto-deploys to Cloudflare Pages
+2. Edge function updates KV storage with new remote URL
+3. Host app automatically loads the new remote version
+4. **No host redeployment needed!**
+
+### Architecture
+
+```
+Host App (Cloudflare Pages)
+    ↓
+Edge Function (Cloudflare Workers)
+    ↓
+KV Storage (remote URL)
+    ↑
+Remote App Edge Function
+    ↑
+Remote App Deployment
+```
+
+**How It Works**:
+- Remote deployments update KV with their URL
+- Host's edge function reads from KV at runtime
+- Dynamic URL injection enables automatic updates
+- 5-minute cache for optimal performance
+
+### Deployment Documentation
+
+📖 **Complete guides available**:
+
+- **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Complete deployment guide
+  - Initial setup steps
+  - Deployment process
+  - Environment variables
+  - Troubleshooting
+  - Rollback procedures
+
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Technical architecture
+  - System overview
+  - Module Federation details
+  - Edge function implementation
+  - KV storage schema
+  - Request flow diagrams
+  - Performance metrics
+
+- **[PREREQUISITES.md](./PREREQUISITES.md)** - Setup requirements
+  - Cloudflare account setup
+  - Wrangler CLI installation
+  - KV namespace creation
+  - Project configuration
+  - Verification steps
+
+### Quick Deploy
+
+```bash
+# Automatic via GitHub (recommended)
+git add .
+git commit -m "Your changes"
+git push origin main
+# → Cloudflare Pages auto-deploys
+
+# Manual via Wrangler CLI
+pnpm build
+wrangler pages deploy dist --project-name=micro-frontend-test
+```
+
+### Local Development vs Production
+
+| Environment | Remote URL |
+|-------------|------------|
+| **Development** | `http://localhost:3001/remoteEntry.js` |
+| **Production** | Injected from KV via edge function |
+
+The `rspack.config.ts` automatically switches based on `NODE_ENV`.
+
 ## 📚 Development Timeline
 
 ### ✅ Phase 1: Bootstrap (Completed)

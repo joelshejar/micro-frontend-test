@@ -67,7 +67,11 @@ export default defineConfig({
     new rspack.container.ModuleFederationPlugin({
       name: 'host',
       remotes: {
-        remote1: 'remote1@http://localhost:3001/remoteEntry.js',
+        // In development: use localhost
+        // In production: placeholder will be replaced by edge function with KV value
+        remote1: isDev
+          ? 'remote1@http://localhost:3001/remoteEntry.js'
+          : 'remote1@__REMOTE_URL_PLACEHOLDER__',
       },
       shared: {
         react: {
