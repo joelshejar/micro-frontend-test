@@ -10,10 +10,7 @@ interface Env {
   REMOTE_URLS: KVNamespace;
 }
 
-// Cache the KV value in memory for 5 minutes to reduce KV reads
-let cachedRemoteUrl: string | null = null;
-let cacheTimestamp: number = 0;
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const FALLBACK_REMOTE_URL = 'https://micro-frontend-test-remote.pages.dev/remoteEntry.js';
 
 export const onRequest: PagesFunction<Env> = async (context) => {
   const { request, env, next } = context;
@@ -43,62 +40,72 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     const contentType = response.headers.get('content-type') || '';
     const isTextContent = contentType.includes('text') ||
                           contentType.includes('javascript') ||
-                          contentType.includes('html');
+                          contentType.includes('html') ||
+                          contentType.includes('application/javascript');
 
     if (!isTextContent) {
       return response;
     }
 
-    // Check if we have a cached remote URL that's still valid
-    const now = Date.now();
-    if (!cachedRemoteUrl || now - cacheTimestamp > CACHE_TTL_MS) {
-      // Fetch remote URL from KV
-      if (env.REMOTE_URLS) {
-        try {
-          const remoteUrl = await env.REMOTE_URLS.get('remote1_url');
-          if (remoteUrl) {
-            cachedRemoteUrl = remoteUrl;
-            cacheTimestamp = now;
-            console.log(`[Host KV Fetch] Updated cache with remote1_url: ${remoteUrl}`);
-          } else {
-            console.warn('[Host KV Fetch] remote1_url not found in KV, using fallback');
-            // Fallback to production URL if KV is not set
-            cachedRemoteUrl = 'https://micro-frontend-test-remote.pages.dev/remoteEntry.js';
-          }
-        } catch (error) {
-          console.error('[Host KV Fetch] Error reading from KV:', error);
-          // Fallback URL in case of error
-          cachedRemoteUrl = 'https://micro-frontend-test-remote.pages.dev/remoteEntry.js';
-        }
-      } else {
-        console.warn('[Host KV Fetch] REMOTE_URLS binding not found');
-        cachedRemoteUrl = 'https://micro-frontend-test-remote.pages.dev/remoteEntry.js';
-      }
-    }
+    // IMPORTANT: Clone response before reading body
+    // The original response body can only be read once
+    const clonedResponse = response.clone();
 
     // Read the response body
-    let body = await response.text();
-
-    // Replace the placeholder with the actual remote URL
-    if (body.includes('__REMOTE_URL_PLACEHOLDER__')) {
-      body = body.replace(/__REMOTE_URL_PLACEHOLDER__/g, cachedRemoteUrl || '');
-      console.log(`[Host URL Injection] Replaced placeholder with: ${cachedRemoteUrl}`);
-
-      // Create a new headers object (immutable headers can cause issues)
-      const newHeaders = new Headers(response.headers);
-
-      // Create a new response with the modified body
-      return new Response(body, {
-        status: response.status,
-        statusText: response.statusText,
-        headers: newHeaders,
-      });
+    let body;
+    try {
+      body = await clonedResponse.text();
+    } catch (err) {
+      console.error('[Host Middleware] Failed to read response body:', err);
+      return response; // Return original response on error
     }
 
-    return response;
+    // Check if we need to replace the placeholder
+    if (!body.includes('__REMOTE_URL_PLACEHOLDER__')) {
+      return response; // No replacement needed, return original
+    }
+
+    // Get remote URL from KV with fallback
+    let remoteUrl = FALLBACK_REMOTE_URL;
+
+    if (env.REMOTE_URLS) {
+      try {
+        const kvUrl = await env.REMOTE_URLS.get('remote1_url');
+        if (kvUrl) {
+          remoteUrl = kvUrl;
+          console.log(`[Host KV Fetch] Using remote URL from KV: ${remoteUrl}`);
+        } else {
+          console.warn('[Host KV Fetch] remote1_url not found in KV, using fallback');
+        }
+      } catch (error) {
+        console.error('[Host KV Fetch] Error reading from KV:', error);
+      }
+    } else {
+      console.warn('[Host KV Fetch] REMOTE_URLS binding not found, using fallback');
+    }
+
+    // Replace the placeholder with the actual remote URL
+    const modifiedBody = body.replace(/__REMOTE_URL_PLACEHOLDER__/g, remoteUrl);
+    console.log(`[Host URL Injection] Replaced placeholder with: ${remoteUrl}`);
+
+    // Create new headers object (Response headers are immutable)
+    const newHeaders = new Headers(response.headers);
+
+    // Create a new response with the modified body
+    return new Response(modifiedBody, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: newHeaders,
+    });
   } catch (error) {
+    // Log the error for debugging
     console.error('[Host Middleware Error]', error);
-    // Always return a response even if something fails
-    return next();
+
+    // Return a generic error response instead of trying to call next()
+    // Calling next() here might fail since we already called it
+    return new Response('Internal Server Error', {
+      status: 500,
+      headers: { 'Content-Type': 'text/plain' }
+    });
   }
 };
